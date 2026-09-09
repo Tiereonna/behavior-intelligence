@@ -46,3 +46,13 @@ next-env.d.ts
 # prisma
 # The generated client is a build artifact, rebuilt by the postinstall script.
 /src/generated/
+
+# agent tooling
+# `next dev` regenerates both AGENTS.md and CLAUDE.md on every run, so neither
+# can be deleted permanently. AGENTS.md is committed: it is the vendor-neutral
+# convention and its contents (this Next.js version differs from what most
+# tools expect) are useful to any contributor. CLAUDE.md is a single-vendor
+# one-line pointer at AGENTS.md, so it stays local and untracked.
+CLAUDE.md
+CLAUDE.mdAGENTS.md
+
