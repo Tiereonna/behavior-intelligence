@@ -1,7 +1,7 @@
 // Behavior Intelligence — V1 schema
 //
-// Twelve models: four for identity (Auth.js), two for tenancy, six for the
-// behavioral domain.
+// Thirteen models: four for identity (Auth.js), two for tenancy, six for the
+// behavioral domain, and an append-only audit log.
 //
 // Two decisions drive most of the shape here and are worth knowing before
 // reading further:
