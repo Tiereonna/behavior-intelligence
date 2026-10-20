@@ -1,0 +1,28 @@
+# run: docker compose run --build --rm etl
+# local test db only, password doesn't matter
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: behavior
+      POSTGRES_PASSWORD: behavior
+      POSTGRES_DB: behavior
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U behavior"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  etl:
+    build: ./etl
+    environment:
+      DATABASE_URL: postgresql://behavior:behavior@db:5432/behavior
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

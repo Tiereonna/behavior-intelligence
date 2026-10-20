@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    env:
+      # prisma generate needs a url but doesn't connect
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  etl:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U ci" --health-interval 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    defaults:
+      run:
+        working-directory: etl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -v
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: load twice
+        run: |
+          docker compose run --build --rm etl
+          docker compose run --rm etl
+      - name: check no duplicates
+        run: |
+          rows=$(docker compose exec -T db psql -U behavior -tAc "SELECT count(*) FROM observation_staging")
+          echo "rows: $rows"
+          test "$rows" -gt 0
+          dupes=$(docker compose exec -T db psql -U behavior -tAc "SELECT count(*) FROM (SELECT 1 FROM observation_staging GROUP BY client_code, session_date, behavior_name HAVING count(*) > 1) d")
+          test "$dupes" -eq 0
+      - if: always()
+        run: docker compose down -v
