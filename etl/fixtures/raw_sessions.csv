@@ -1,0 +1,11 @@
+client_code,session_date,duration_minutes,behavior_name,measurement_type,raw_value
+JM,2026-01-06,60,Requests,frequency,4
+JM,2026-01-06,60,Elopement,frequency,0
+JM,2026-01-07,45,Requests,frequency,
+JM,2026-01-08,50,Requests,frequency,N/A
+JM,2026-01-09,0,Requests,frequency,2
+JM,not-a-date,60,Requests,frequency,1
+JM,2026-01-12,60,Requests,not-a-type,3
+JM,2026-01-06,60,Requests,frequency,9
+JM,2026-01-13,55,Latency,latency,abc
+ ,2026-01-14,40,Requests,frequency,1
