@@ -53,8 +53,9 @@ etl/artifacts/
 # prisma client (rebuilt on npm install)
 /src/generated/
 
-# next dev makes these
+# next / cursor drop these in the repo root
 AGENTS.md
 CLAUDE.md
+.claude/
 .pytest_cache/
 
