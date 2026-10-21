@@ -215,18 +215,20 @@ def upsert_rows(existing: dict[tuple[str, str, str], dict], rows: list[dict]) ->
     return merged
 
 
-def load_postgres(accepted: pd.DataFrame, database_url: str) -> int:
-    """Upsert accepted rows. Returns how many keys were applied, not how many were new."""
+def load_postgres(accepted: pd.DataFrame, database_url: str, batch_size: int = 5000) -> int:
+    """Upsert accepted rows in batches. Returns how many keys were applied."""
     import psycopg
 
     if accepted.empty:
         return 0
 
+    rows = _insert_tuples(accepted)
     with psycopg.connect(database_url) as connection:
         with connection.cursor() as cursor:
             cursor.execute(STAGING_DDL)
             cursor.execute(UNIQUE_INDEX_SQL)
-            cursor.executemany(INSERT_SQL, _insert_tuples(accepted))
+            for i in range(0, len(rows), batch_size):
+                cursor.executemany(INSERT_SQL, rows[i : i + batch_size])
         connection.commit()
     return int(len(accepted))
 
@@ -250,12 +252,16 @@ def _insert_tuples(accepted: pd.DataFrame) -> list[tuple]:
 
 
 def run(csv_path: Path, database_url: str | None, report_path: Path) -> dict:
+    import time
+
+    started = time.perf_counter()
     raw = extract_csv(csv_path)
     accepted, rejected = clean_and_split(raw)
     report = quality_report(len(raw), accepted, rejected)
     report["loaded_rows"] = 0
     if database_url:
         report["loaded_rows"] = load_postgres(accepted, database_url)
+    report["seconds"] = round(time.perf_counter() - started, 2)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2))
     return report

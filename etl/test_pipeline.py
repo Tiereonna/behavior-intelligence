@@ -61,3 +61,16 @@ def test_repeat_load_does_not_duplicate():
     once = upsert_rows({}, rows)
     twice = upsert_rows(once, rows)
     assert len(twice) == len(once) == len(rows)
+
+
+def test_generator_keeps_the_same_mix():
+    from generate_sessions import build_rows
+
+    rows = build_rows(40)
+    frame = pd.DataFrame(rows)
+    accepted, rejected = clean_and_split(frame)
+    report = quality_report(len(frame), accepted, rejected)
+    assert report["rows_read"] == 40
+    assert report["rows_rejected"] == 8
+    assert report["true_zeros"] == 2
+    assert report["missing_measurements"] == 2

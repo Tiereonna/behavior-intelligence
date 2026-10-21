@@ -72,7 +72,7 @@ Test Files  8 passed (8)
 
 ```text
 etl/ (with TEST_DATABASE_URL set)
-6 passed
+7 passed
 ```
 
 MIT — [LICENSE](LICENSE).

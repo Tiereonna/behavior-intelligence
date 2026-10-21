@@ -1,18 +1,13 @@
-"""
-Write a larger synthetic session CSV.
-
-The mix is fixed so the quality report stays the same every time you run this.
-Nothing here is a real client record.
-"""
+# writes a synthetic session csv
+# the mix of bad dates, zeros, missing, and dupes is the same every run
+# nothing here is a real client record
 
 from __future__ import annotations
 
+import argparse
 import csv
+from datetime import date, timedelta
 from pathlib import Path
-
-# 20 copies of each pattern below. 20 x 20 = 400 rows.
-BLOCKS = 20
-OUT = Path(__file__).parent / "fixtures" / "sessions_400.csv"
 
 HEADER = [
     "client_code",
@@ -23,20 +18,31 @@ HEADER = [
     "raw_value",
 ]
 
+# each block is 20 rows: 4 rejects, 1 missing, 1 true zero, 14 normal
+ROWS_PER_BLOCK = 20
+DEFAULT_ROWS = 400
+DEFAULT_OUT = Path(__file__).parent / "fixtures" / "sessions_400.csv"
 
-def main() -> None:
+
+def build_rows(n_rows: int) -> list[dict[str, str]]:
+    if n_rows % ROWS_PER_BLOCK != 0:
+        raise ValueError(f"--rows must be a multiple of {ROWS_PER_BLOCK}")
+
     rows: list[dict[str, str]] = []
-    for block in range(BLOCKS):
-        day = block + 1
+    blocks = n_rows // ROWS_PER_BLOCK
+    start = date(2020, 1, 1)
+
+    for block in range(blocks):
         client = f"C{block % 5}"
-        # Residue 4 is a real zero. Residue 5 repeats that same key so the
-        # pipeline can reject it as a duplicate instead of loading it twice.
+        # unique valid date per block so the 0 vs duplicate pair still works
+        # at 500k rows (feb-31 would blow up if we just used block + 1)
+        zero_date = (start + timedelta(days=block)).isoformat()
         zero_key = {
             "client_code": client,
-            "session_date": f"2026-02-{day:02d}",
+            "session_date": zero_date,
             "behavior_name": "Requests",
         }
-        for slot in range(20):
+        for slot in range(ROWS_PER_BLOCK):
             row = {
                 "client_code": client,
                 "session_date": f"2026-03-{(slot % 27) + 1:02d}",
@@ -60,13 +66,32 @@ def main() -> None:
                 row.update(zero_key)
                 row["raw_value"] = "8"
             rows.append(row)
+    return rows
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    with OUT.open("w", newline="") as handle:
+
+def write_csv(path: Path, n_rows: int) -> int:
+    rows = build_rows(n_rows)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=HEADER)
         writer.writeheader()
         writer.writerows(rows)
-    print(f"Wrote {len(rows)} rows to {OUT}")
+    return len(rows)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rows", type=int, default=DEFAULT_ROWS)
+    parser.add_argument("--out", type=Path, default=None)
+    args = parser.parse_args()
+    out = args.out
+    if out is None:
+        if args.rows == DEFAULT_ROWS:
+            out = DEFAULT_OUT
+        else:
+            out = Path(__file__).parent / "artifacts" / f"sessions_{args.rows}.csv"
+    n = write_csv(out, args.rows)
+    print(f"Wrote {n} rows to {out}")
 
 
 if __name__ == "__main__":

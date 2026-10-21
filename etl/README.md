@@ -41,6 +41,13 @@ python generate_sessions.py
 python pipeline.py --csv fixtures/sessions_400.csv
 ```
 
+Bigger file (stays in `artifacts/`, not git):
+
+```bash
+python generate_sessions.py --rows 500000
+python pipeline.py --csv artifacts/sessions_500000.csv
+```
+
 Load into Postgres. Run it twice and the row count for each key stays one:
 
 ```bash
@@ -91,6 +98,26 @@ Rejected records from that same file:
 | 2026-01-14 | Requests | 1 | Client code is blank |
 
 A reload does not insert those keys again. PostgreSQL uses a unique key of client, session date, and behavior. The load is `INSERT ... ON CONFLICT DO UPDATE`, so the second run replaces the existing staging row.
+
+`--rows 500000` writes `artifacts/sessions_500000.csv` (gitignored). Last run on this machine, with Postgres:
+
+```json
+{
+  "rows_read": 500000,
+  "rows_accepted": 400000,
+  "rows_rejected": 100000,
+  "reject_reasons": {
+    "bad_date": 25000,
+    "bad_duration": 25000,
+    "bad_measurement_type": 25000,
+    "duplicate_key": 25000
+  },
+  "missing_measurements": 25000,
+  "true_zeros": 25000,
+  "loaded_rows": 400000,
+  "seconds": 63.11
+}
+```
 
 The 400-row file [`fixtures/sessions_400.csv`](fixtures/sessions_400.csv) produces this report when no database is connected (`loaded_rows` is 0):
 
