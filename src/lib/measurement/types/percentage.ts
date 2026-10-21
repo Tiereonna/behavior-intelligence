@@ -1,17 +1,7 @@
 import { z } from "zod";
 import { MeasurementError, defineMeasurementType } from "../contract";
 
-/**
- * PERCENTAGE — successes out of opportunities.
- *
- * The standard system for skill acquisition: correct responses out of trials
- * presented, independent steps out of steps in a task analysis.
- *
- * The interesting case is a denominator of zero. That is not an error and it
- * is not a score of zero — it means the opportunity never came up, so there is
- * nothing to report. Recording it as 0% would drag the mean down and make a
- * learner look like they were failing on a day they were never asked.
- */
+// Successes out of opportunities. A zero denominator is not a score of 0.
 
 const configSchema = z.strictObject({});
 

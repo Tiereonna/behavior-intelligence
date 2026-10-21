@@ -1,10 +1,4 @@
-/**
- * Phase membership is derived at read time, not stored on the measurement.
- *
- * A point on date D belongs to the phase whose half-open range is
- * [startDate, endDate). A null endDate means the phase is still open.
- * Correcting a boundary is then one Phase row, not a backfill.
- */
+// Phase comes from the session date. Range is [startDate, endDate).
 
 export type PhaseWindow = {
   id: string;

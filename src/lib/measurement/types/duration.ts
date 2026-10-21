@@ -1,16 +1,7 @@
 import { z } from "zod";
 import { MeasurementError, defineMeasurementType } from "../contract";
 
-/**
- * DURATION — total time the behavior occurred, as a percentage of the session.
- *
- * Used when how long a behavior lasts matters more than how often it starts:
- * tantrums, sustained engagement, time out of seat.
- *
- * The raw seconds are kept in `rawEntry` even though the normalized value is a
- * percentage, so a "total minutes" view can be added later without a
- * migration and without recomputing anything.
- */
+// Seconds of behavior, stored as a percent of the session.
 
 const configSchema = z.strictObject({});
 

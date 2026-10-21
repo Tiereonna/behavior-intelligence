@@ -18,8 +18,8 @@ export default async function Home({ searchParams }: HomeProps) {
       <main className="mx-auto max-w-3xl flex-1 px-6 py-16">
         <h1 className="text-2xl font-semibold">Behavior Intelligence</h1>
         <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
-          The chart reads the local Postgres seed. Start the database, then run
-          `npm run db:seed`.
+          The chart could not reach the database. Check DATABASE_URL, then run
+          `npm run db:seed` if the tables are empty.
         </p>
         <pre className="mt-4 overflow-auto rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800">
           {message}

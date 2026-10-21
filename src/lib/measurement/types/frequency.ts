@@ -1,20 +1,7 @@
 import { z } from "zod";
 import { defineMeasurementType } from "../contract";
 
-/**
- * FREQUENCY — a raw count of occurrences.
- *
- * The simplest measurement system, and the easiest to misuse. A raw count is
- * only comparable across sessions when the sessions are the same length: nine
- * occurrences in twenty minutes and nine in three hours are very different
- * facts that plot as the same dot.
- *
- * It stays available because equal-length sessions are common (a fixed 30
- * minute session, a single class period) and practitioners think in counts.
- * When session lengths vary, RATE is the correct choice, and a later milestone
- * will surface that as a hint on the chart rather than silently letting the
- * data mislead.
- */
+// Raw count. Only lines up across sessions when the sessions are the same length.
 
 const configSchema = z.strictObject({});
 

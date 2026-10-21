@@ -1,25 +1,7 @@
 import { z } from "zod";
 import { MeasurementError, defineMeasurementType } from "../contract";
 
-/**
- * INTERVAL — percentage of observed intervals in which the behavior was
- * scored.
- *
- * One type covers all three interval recording systems, because they differ
- * only in the instruction given to the observer, not in the arithmetic:
- *
- * - WHOLE      score the interval only if the behavior occurred throughout.
- *              Systematically UNDERestimates.
- * - PARTIAL    score the interval if the behavior occurred at any point.
- *              Systematically OVERestimates.
- * - MOMENTARY  score the interval based only on the instant it ends. The least
- *              biased of the three and the usual choice for time sampling.
- *
- * The style is stored so the chart can label it and so two behaviors recorded
- * with different styles are never silently compared as equivalent — a 60%
- * partial-interval score and a 60% whole-interval score describe quite
- * different amounts of behavior.
- */
+// Percent of intervals scored. WHOLE, PARTIAL, and MOMENTARY use the same math.
 
 const configSchema = z.strictObject({
   intervalLengthSeconds: z.number().int().positive(),

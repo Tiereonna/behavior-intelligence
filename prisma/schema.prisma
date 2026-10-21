@@ -1,29 +1,12 @@
-// Behavior Intelligence — V1 schema
-//
-// Thirteen models: four for identity (Auth.js), two for tenancy, six for the
-// behavioral domain, and an append-only audit log.
-//
-// Two decisions drive most of the shape here and are worth knowing before
-// reading further:
-//
-//   1. A measurement's phase is DERIVED from its session date, not stored.
-//      Phase has no foreign key to Measurement. Correcting a phase boundary is
-//      therefore a one-row edit rather than a backfill over history.
-//
-//   2. Measurements keep BOTH the raw entry (as JSON, in whatever shape the
-//      measurement type defines) and a single normalized scalar. Charts and
-//      statistics only ever read the scalar; the JSON is read only when
-//      displaying or editing the original entry.
+// Phase comes from the session date. There is no phaseId on Measurement.
+// User, account, and session tables are unused. Login is not built.
 
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
-// Prisma 7 no longer accepts `url` here. The connection string lives in
-// prisma.config.ts for CLI commands (migrate, seed, studio), and the running
-// application passes a driver adapter to the PrismaClient constructor.
-// See src/lib/db.ts.
+// Connection string is in prisma.config.ts, not here.
 datasource db {
   provider = "postgresql"
 }
@@ -79,9 +62,7 @@ enum PhaseType {
   REVERSAL
 }
 
-// ---------------------------------------------------------------------------
-// Identity — Auth.js v5 with the Prisma adapter, Google OAuth only
-// ---------------------------------------------------------------------------
+// Login tables. The app does not read these.
 
 model User {
   id            String    @id @default(cuid())
@@ -101,9 +82,6 @@ model User {
   @@map("users")
 }
 
-/// One row per external identity. A user who later signs in with a second
-/// provider gets a second row here pointing at the same User, which is how
-/// "link another provider" works without a schema change.
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -125,13 +103,7 @@ model Account {
   @@map("accounts")
 }
 
-/// Login sessions. OAuth providers support Auth.js's database session
-/// strategy, so signing out revokes server-side rather than just dropping a
-/// cookie the server would still trust.
-///
-/// Mapped to `auth_sessions` to keep it clearly distinct from
-/// ObservationSession, which is the domain concept people will mean when they
-/// say "session" in conversation about this app.
+// auth_sessions, not an observation session
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -144,8 +116,6 @@ model Session {
   @@map("auth_sessions")
 }
 
-/// Unused with OAuth-only sign-in. Kept because the adapter interface expects
-/// it and a future email/magic-link provider would need it.
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -159,13 +129,7 @@ model VerificationToken {
 // Tenancy
 // ---------------------------------------------------------------------------
 
-/// A workspace that owns clients. In V1 every user gets exactly one personal
-/// organization, created automatically on first sign-in, and the word
-/// "organization" never appears in the UI.
-///
-/// It exists now because adding tenancy later means migrating live health
-/// records and re-auditing every query at the same time. Building the boundary
-/// up front costs two small tables.
+// Client.organizationId points here. Nothing signs a user in.
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -178,10 +142,6 @@ model Organization {
   @@map("organizations")
 }
 
-/// Join table between User and Organization, carrying the role.
-///
-/// Only OWNER is assigned in V1. Adding ADMIN or VIEWER later is an enum
-/// addition plus a permission check, not a data migration.
 model Membership {
   id             String         @id @default(cuid())
   userId         String
@@ -201,16 +161,7 @@ model Membership {
 // Domain
 // ---------------------------------------------------------------------------
 
-/// The person whose behavior is being measured.
-///
-/// Deliberately minimal. No date of birth, no external record number, no
-/// free-text notes — each is either a HIPAA identifier or a field where
-/// protected health information accumulates unstructured. They can be added
-/// when a feature actually requires them.
-///
-/// `organizationId` is the ONLY place tenancy is recorded. Everything below
-/// inherits it by descending from a client, which is why tenancy can never
-/// drift out of sync.
+// Display name only. No real client records.
 model Client {
   id             String    @id @default(cuid())
   organizationId String
@@ -228,12 +179,6 @@ model Client {
   @@map("clients")
 }
 
-/// One thing being measured about one client, plus the rules for measuring it.
-///
-/// Service-layer rule with no schema equivalent: once a behavior has
-/// measurements, `measurementType` is immutable. Changing it would silently
-/// reinterpret every historical row. The correct user-facing action is to
-/// archive the behavior and create a new one.
 model Behavior {
   id String @id @default(cuid())
 
@@ -241,21 +186,12 @@ model Behavior {
 
   name String
 
-  /// Observable and unambiguous, so two observers score the same event the
-  /// same way. "Leaving the designated instructional area without adult
-  /// permission for more than 3 seconds."
   operationalDefinition String
 
   measurementType MeasurementType
 
-  /// Type-specific settings, validated by that type's `configSchema`.
-  /// Interval behaviors store `{ intervalLengthSeconds, style }`; latency
-  /// stores the antecedent description. Empty for types that need no config.
   measurementConfig Json @default("{}")
 
-  /// Whether improvement means the line goes up or down. Captured at
-  /// definition time because it changes how every downstream statistic is
-  /// interpreted.
   direction BehaviorDirection
 
   targetValue Float?
@@ -273,19 +209,7 @@ model Behavior {
   @@map("behaviors")
 }
 
-/// A named condition applied over a date range: baseline, intervention,
-/// maintenance, or reversal.
-///
-/// Baseline and intervention are the same model distinguished by `phaseType`,
-/// because they share identical structure and identical analysis — and because
-/// a withdrawal design (A-B-A-B) is then just four ordered rows.
-///
-/// The range is HALF-OPEN: [startDate, endDate). If a baseline ends on the
-/// 27th and an intervention starts on the 27th, a closed interval would put
-/// that day in both phases and silently double-count it in both means.
-///
-/// Attached to a behavior rather than a client, since a client can be in
-/// maintenance on one behavior while baseline is still running on another.
+// [startDate, endDate). A null endDate means the phase is still open.
 model Phase {
   id         String    @id @default(cuid())
   behaviorId String
@@ -306,28 +230,14 @@ model Phase {
   @@map("phases")
 }
 
-/// One bounded period of observing one client. Knows nothing about specific
-/// behaviors — it is the "when and where" only.
-///
-/// Session duration lives here and nowhere else, because it is an input to the
-/// math: rate divides by it, duration and interval percentages divide by it.
-/// If it were repeated per measurement, one bad edit would leave two behaviors
-/// from the same session computed against different session lengths.
+// Duration lives on the session. Rate divides by it.
 model ObservationSession {
   id       String  @id @default(cuid())
   clientId String
-  /// Nullable: sessions get entered on someone else's behalf. SetNull on
-  /// delete, because removing a user must never delete behavior data.
   observerId String?
 
-  /// A DATE, not a timestamp. A session on the 3rd is on the 3rd regardless of
-  /// server timezone. Using a timestamp here produces off-by-one-day errors
-  /// that move points across phase boundaries and change the reported effect.
   sessionDate DateTime @db.Date
 
-  /// Local wall clock as "HH:mm". A string rather than a time type, because
-  /// Prisma maps SQL time to a JavaScript Date and reintroduces exactly the
-  /// timezone confusion `@db.Date` above avoids.
   startTime String?
 
   durationMinutes Int
@@ -344,39 +254,17 @@ model ObservationSession {
   @@map("observation_sessions")
 }
 
-/// One data point: the value of one behavior in one session. This is the row
-/// that becomes a dot on the chart.
-///
-/// Read the table as a grid — sessions are rows, behaviors are columns,
-/// measurements are the filled cells. The grid is intentionally sparse, and
-/// the sparseness carries meaning: no row means the behavior was not tracked
-/// that session, while a row holding 0 means the behavior genuinely did not
-/// occur. Conflating those two produces wrong statistics.
+// 0 means the behavior did not happen. No row means it was not scored.
 model Measurement {
   id                   String @id @default(cuid())
   observationSessionId String
   behaviorId           String
 
-  /// Duplicated from the behavior on purpose, so the row is self-describing:
-  /// an export or a future analysis service can interpret it without joining
-  /// back to Behavior and consulting the type registry.
   measurementType MeasurementType
 
-  /// What the practitioner actually recorded, in the shape that measurement
-  /// type defines — `{ count }`, `{ numerator, denominator }`, and so on.
-  ///
-  /// JSON so that adding a measurement type requires no migration. This is
-  /// safe specifically because nothing queries it: every chart and statistic
-  /// reads `normalizedValue` instead, and this column is parsed only when
-  /// displaying or editing the original entry.
   rawEntry Json
 
-  /// The single comparable scalar that all charts and statistics read.
-  /// Null when `valueState` is NOT_APPLICABLE.
-  ///
-  /// Float rather than Decimal: these are derived, already-approximate
-  /// physical measurements, not money. Decimal would force `.toNumber()` at
-  /// every boundary, including serializing the analysis payload.
+  // null when valueState is NOT_APPLICABLE
   normalizedValue Float?
 
   valueState ValueState      @default(VALUE)
@@ -394,11 +282,6 @@ model Measurement {
   @@map("measurements")
 }
 
-/// A dated note explaining context: "medication change", "new paraprofessional".
-///
-/// Distinct from a Phase because it is a point in time with no duration and no
-/// effect being measured. A token economy is a phase; a fire drill is an
-/// annotation.
 model Annotation {
   id         String   @id @default(cuid())
   behaviorId String
@@ -413,19 +296,11 @@ model Annotation {
   @@map("annotations")
 }
 
-/// Append-only record of who changed what.
-///
-/// `userId` is nullable with SetNull, and `entityId` is a plain string rather
-/// than a foreign key, so the log survives deletion of both the actor and the
-/// thing described. An audit log with cascading deletes is not an audit log.
-///
-/// Never put protected health information in `metadata`: log that a value
-/// changed and by whom, not the client's name or clinical notes.
+// Unused. The chart does not write here.
 model AuditLog {
   id     String  @id @default(cuid())
   userId String?
 
-  /// Dotted action name, e.g. "behavior.create", "phase.update".
   action     String
   entityType String
   entityId   String

@@ -143,12 +143,7 @@ function elopementRate(iso: string): number {
   }
 }
 
-/**
- * On-task behavior, as a percentage of momentary time samples. A deliberately
- * WEAK effect — baseline around 46%, intervention around 55%, with enough
- * variability that "did this work?" is a genuinely open question. Real data
- * looks like this more often than the textbook example does.
- */
+// on-task percent. baseline stays near the mid-40s.
 function onTaskPercent(iso: string): number {
   switch (phaseOf(iso)) {
     case "baseline":
@@ -185,14 +180,7 @@ const SETTINGS = [
 // Seed
 // ---------------------------------------------------------------------------
 
-/**
- * Wipe the domain tables so the seed is repeatable.
- *
- * Deletion order matters even with cascades configured, because deleting the
- * parents directly is clearer about intent than relying on cascade side
- * effects. This is a development-only script; it never runs against anything
- * but a local database.
- */
+// Order matters: children first, then the user/org rows the client needs.
 async function reset() {
   await prisma.measurement.deleteMany();
   await prisma.annotation.deleteMany();
@@ -210,11 +198,7 @@ async function main() {
   console.log("Resetting seeded data...");
   await reset();
 
-  // -- Identity and tenancy ------------------------------------------------
-  //
-  // Mirrors what will happen automatically on first Google sign-in: a user, a
-  // personal organization, and an OWNER membership, created together.
-
+  // Client needs an organization. Login is not built.
   const user = await prisma.user.create({
     data: {
       email: "demo.practitioner@example.com",

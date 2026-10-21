@@ -1,12 +1,8 @@
 """
-Load a messy session CSV into a PostgreSQL staging table.
+Load a session CSV into observation_staging.
 
-Missing is not zero. A blank measurement means the behavior was not scored.
-A 0 means it was scored and did not happen. Mixing those up changes every
-later average. This pipeline keeps them apart before anything is stored.
-
-The staging table is separate from the app's Prisma tables. A bad CSV should
-not be able to overwrite the records the chart reads.
+A blank measurement is missing. A 0 was scored and did not happen.
+This table is not the Prisma tables the chart reads.
 """
 
 from __future__ import annotations

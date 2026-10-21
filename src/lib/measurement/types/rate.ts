@@ -1,18 +1,7 @@
 import { z } from "zod";
 import { MeasurementError, defineMeasurementType } from "../contract";
 
-/**
- * RATE — occurrences per hour.
- *
- * The same count a practitioner records for FREQUENCY, divided by how long
- * they watched. Dividing by session length is what makes sessions of different
- * lengths comparable, which is why this is the right default for most
- * frequency-like behaviors.
- *
- * Per hour rather than per minute purely for readability: most behaviors of
- * clinical interest occur a handful of times an hour, and "4.50/hr" reads
- * better than "0.075/min".
- */
+// Count divided by session length, in occurrences per hour.
 
 const configSchema = z.strictObject({});
 
