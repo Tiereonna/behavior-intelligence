@@ -4,7 +4,9 @@
 
 Practice project: ABA-style time series on **synthetic** data only. Not HIPAA-compliant. Do not load real client records.
 
-What works locally: a 13-table PostgreSQL schema, six measurement types with tests, a seed of 29 sessions, a home-page chart, and a Python ETL pipeline in [`etl/`](etl/README.md). Login, data-entry forms, and scheduling are not built.
+Live demo: [behavior-intelligence.vercel.app](https://behavior-intelligence.vercel.app). Free Vercel + Neon; the first load after idle can be slow.
+
+What works: a 13-table PostgreSQL schema, six measurement types with tests, a seed of 29 sessions, a home-page chart, and a Python ETL pipeline in [`etl/`](etl/README.md). Login, data-entry forms, and scheduling are not built.
 
 Schema notes: [`docs/architecture.md`](docs/architecture.md). Pipeline diagram, sample CSV, and test output: [`etl/README.md`](etl/README.md).
 
